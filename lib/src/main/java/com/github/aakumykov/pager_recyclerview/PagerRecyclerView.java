@@ -16,6 +16,7 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
     private Page<ListItemType, ViewHolderType> mCurrentPage;
     @Nullable private Page<ListItemType, ViewHolderType> mNewPage;
     @Nullable private PageChangeCallback<ListItemType, ViewHolderType> mPageChangeCallback;
+    private boolean mFirstRun = true;
 
 
     public PagerRecyclerView(@NonNull Context context) {
@@ -80,8 +81,13 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
     }
 
     private void reportPageAttached(final Page<ListItemType,ViewHolderType> attachedPage) {
-        if (null != mPageChangeCallback)
+        if (null != mPageChangeCallback) {
+            if (mFirstRun) {
+                mFirstRun = false;
+                mPageChangeCallback.onFirstPageAttached(attachedPage);
+            }
             mPageChangeCallback.onNewPageAttached(attachedPage);
+        }
     }
 
     private void reportPageDetached(final Page<ListItemType,ViewHolderType> detachedPage) {
@@ -117,10 +123,15 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
 
 
     public interface PageChangeCallback<ListItemType, ViewHolderType> {
-        void onNewPageAttached(final Page<ListItemType, ViewHolderType> newPage);
-        void onOldPageDetached(final Page<ListItemType, ViewHolderType> oldPage);
-        default void onPageChanged(final Page<ListItemType, ViewHolderType> oldPage,
-                                   final Page<ListItemType, ViewHolderType> newPage) {}
+
+        void onFirstPageAttached(final Page<ListItemType, ViewHolderType> page);
+
+        void onPageChanged(final Page<ListItemType, ViewHolderType> oldPage,
+                           final Page<ListItemType, ViewHolderType> newPage);
+
+        default void onNewPageAttached(final Page<ListItemType, ViewHolderType> newPage) {}
+
+        default void onOldPageDetached(final Page<ListItemType, ViewHolderType> oldPage) {}
     }
 
 
