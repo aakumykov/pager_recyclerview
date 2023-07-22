@@ -110,7 +110,8 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
     }
 
     private boolean currentPageIs(Page<ListItemType, ViewHolderType> detachedPage) {
-        return null != mCurrentPage && detachedPage.viewHolder.equals(mCurrentPage.viewHolder);
+        return (null != mCurrentPage) &&
+                mCurrentPage.listItem.equals(detachedPage.listItem);
     }
 
 
