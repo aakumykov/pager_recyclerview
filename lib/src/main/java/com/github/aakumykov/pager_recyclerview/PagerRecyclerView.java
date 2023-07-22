@@ -73,11 +73,11 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
             reportPageDetached(mNewPage);
             mNewPage = null;
         }
-        else
+        /*else
             throw new IllegalStateException("Нарушена логика метода: ни currentItem, ни newItem не совпадают с detachedItem:\n" +
                     "currentItem: "+ mCurrentPage +"\n" +
                     "newItem: "+ mNewPage +"\n" +
-                    "detachedPage: "+detachedPage);
+                    "detachedPage: "+detachedPage);*/
     }
 
     private void reportPageAttached(final Page<ListItemType,ViewHolderType> attachedPage) {
@@ -110,7 +110,8 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
     }
 
     private boolean currentPageIs(Page<ListItemType, ViewHolderType> detachedPage) {
-        return null != mCurrentPage && detachedPage.viewHolder.equals(mCurrentPage.viewHolder);
+        return (null != mCurrentPage) &&
+                mCurrentPage.listItem.equals(detachedPage.listItem);
     }
 
 
