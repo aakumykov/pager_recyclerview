@@ -8,14 +8,16 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.function.BiFunction;
+
 public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView.ViewHolder>
         extends RecyclerView
         implements RecyclerView.OnChildAttachStateChangeListener
 {
-    @Nullable
-    private Page<ListItemType, ViewHolderType> mCurrentPage;
+    @Nullable private Page<ListItemType, ViewHolderType> mCurrentPage;
     @Nullable private Page<ListItemType, ViewHolderType> mNewPage;
     @Nullable private PageChangeCallback<ListItemType, ViewHolderType> mPageChangeCallback;
+    @Nullable private BiFunction<ListItemType, ListItemType, Boolean> mItemsComparator;
     private boolean mFirstRun = true;
 
 
@@ -41,6 +43,11 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
 
     public void unsetPageChangeCallback() {
         mPageChangeCallback = null;
+    }
+
+
+    public void setItemsComparator(@NonNull BiFunction<ListItemType, ListItemType, Boolean> comparator) {
+        mItemsComparator = comparator;
     }
 
 
@@ -110,8 +117,11 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
     }
 
     private boolean currentPageIs(Page<ListItemType, ViewHolderType> detachedPage) {
-        return (null != mCurrentPage) &&
-                mCurrentPage.listItem.equals(detachedPage.listItem);
+        if (null == mItemsComparator)
+            throw new IllegalStateException("Item comparator function must be set with setItemsComparator() method.");
+
+        return (null != mCurrentPage &&
+                mItemsComparator.apply(mCurrentPage.listItem, detachedPage.listItem));
     }
 
 
