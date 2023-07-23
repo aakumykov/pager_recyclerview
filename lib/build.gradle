@@ -6,7 +6,7 @@ plugins {
 project.ext {
     artifactId = 'pager_recyclerview'
     groupId = 'com.github.aakumykov'
-    versionCode = 6
+    versionCode = 7
     versionName = "0.0." + versionCode
 }
 

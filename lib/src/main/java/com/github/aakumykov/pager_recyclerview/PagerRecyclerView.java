@@ -2,6 +2,7 @@ package com.github.aakumykov.pager_recyclerview;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -14,11 +15,12 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
         extends RecyclerView
         implements RecyclerView.OnChildAttachStateChangeListener
 {
+    private static final String TAG = PagerRecyclerView.class.getSimpleName();
     @Nullable private Page<ListItemType, ViewHolderType> mCurrentPage;
     @Nullable private Page<ListItemType, ViewHolderType> mNewPage;
     @Nullable private PageChangeCallback<ListItemType, ViewHolderType> mPageChangeCallback;
     @Nullable private BiFunction<ListItemType, ListItemType, Boolean> mItemsComparator;
-    private boolean mFirstRun = true;
+    private final boolean mFirstRun = true;
 
 
     public PagerRecyclerView(@NonNull Context context) {
@@ -60,12 +62,14 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
         final Page<ListItemType, ViewHolderType> attachedPage = pageFromView(view);
         final ListItemType attachedItem = itemFromView(view);
 
-        if (null == mCurrentPage)
+        if (null == mCurrentPage) {
             mCurrentPage = attachedPage;
-        else
+            reportFirstPageAttached();
+        }
+        else {
             mNewPage = attachedPage;
-
-        reportPageAttached(attachedPage);
+            //reportPageAttached(attachedPage); // Не очень-то и нужно.
+        }
     }
 
     @Override
@@ -76,7 +80,7 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
 
         final Page<ListItemType, ViewHolderType> detachedPage = pageFromView(view);
 
-        if (currentPageIs(detachedPage)) {
+        /*if (currentPageIs(detachedPage)) {
             mCurrentPage = mNewPage;
             mNewPage = null;
 
@@ -86,15 +90,28 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
         else if (newPageIs(detachedPage)) {
             reportPageDetached(mNewPage);
             mNewPage = null;
+        }*/
+
+        if (newPageIs(detachedPage)) {
+            mNewPage = null;
         }
-        /*else
-            throw new IllegalStateException("Нарушена логика метода: ни currentItem, ни newItem не совпадают с detachedItem:\n" +
-                    "currentItem: "+ mCurrentPage +"\n" +
-                    "newItem: "+ mNewPage +"\n" +
-                    "detachedPage: "+detachedPage);*/
+        else if (currentPageIs(detachedPage)) {
+            mCurrentPage = mNewPage;
+            mNewPage = null;
+            reportPageChanged(detachedPage, mCurrentPage);
+        }
+        else {
+            Log.w(TAG, "onChildViewDetachedFromWindow(): неизвестный науке случай");
+        }
     }
 
-    private void reportPageAttached(final Page<ListItemType,ViewHolderType> attachedPage) {
+
+    private void reportFirstPageAttached() {
+        if (null != mPageChangeCallback)
+            mPageChangeCallback.onFirstPageAttached(mCurrentPage);
+    }
+
+    /*private void reportPageAttached(final Page<ListItemType,ViewHolderType> attachedPage) {
         if (null != mPageChangeCallback) {
             if (mFirstRun) {
                 mFirstRun = false;
@@ -102,12 +119,12 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
             }
             mPageChangeCallback.onNewPageAttached(attachedPage);
         }
-    }
+    }*/
 
-    private void reportPageDetached(final Page<ListItemType,ViewHolderType> detachedPage) {
+    /*private void reportPageDetached(final Page<ListItemType,ViewHolderType> detachedPage) {
         if (null != mPageChangeCallback)
             mPageChangeCallback.onOldPageDetached(detachedPage);
-    }
+    }*/
 
     private void reportPageChanged(final Page<ListItemType,ViewHolderType> oldPage,
                                    final Page<ListItemType,ViewHolderType> newPage) {
@@ -143,9 +160,9 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
 
     private boolean recreatedSameItem(@NonNull View view) {
         final ListItemType currentItem = getCurrentListItem();
-        final ListItemType attachedItem = itemFromView(view);
+        final ListItemType itemFromView = itemFromView(view);
 //        return (null != currentItem && currentItem.equals(attachedItem));
-        return areListItemsTheSame(currentItem, attachedItem);
+        return areListItemsTheSame(currentItem, itemFromView);
     }
 
     protected abstract boolean areListItemsTheSame(ListItemType firstItem, ListItemType secondItem);
@@ -158,9 +175,8 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
         void onPageChanged(final Page<ListItemType, ViewHolderType> oldPage,
                            final Page<ListItemType, ViewHolderType> newPage);
 
-        default void onNewPageAttached(final Page<ListItemType, ViewHolderType> newPage) {}
-
-        default void onOldPageDetached(final Page<ListItemType, ViewHolderType> oldPage) {}
+//        default void onNewPageAttached(final Page<ListItemType, ViewHolderType> newPage) {}
+//        default void onOldPageDetached(final Page<ListItemType, ViewHolderType> oldPage) {}
     }
 
 
