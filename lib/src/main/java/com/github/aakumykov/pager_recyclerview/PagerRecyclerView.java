@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.function.BiFunction;
 
-public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView.ViewHolder>
+public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView.ViewHolder>
         extends RecyclerView
         implements RecyclerView.OnChildAttachStateChangeListener
 {
@@ -54,7 +54,11 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
     @Override
     public void onChildViewAttachedToWindow(@NonNull View view) {
 
+        if (recreatedSameItem(view))
+            return;
+
         final Page<ListItemType, ViewHolderType> attachedPage = pageFromView(view);
+        final ListItemType attachedItem = itemFromView(view);
 
         if (null == mCurrentPage)
             mCurrentPage = attachedPage;
@@ -66,6 +70,9 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
 
     @Override
     public void onChildViewDetachedFromWindow(@NonNull View view) {
+
+        if (recreatedSameItem(view))
+            return;
 
         final Page<ListItemType, ViewHolderType> detachedPage = pageFromView(view);
 
@@ -126,11 +133,22 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
 
 
     private Page<ListItemType, ViewHolderType> pageFromView(@NonNull View view) {
-        final ListItemType attachedItem = (ListItemType) view.getTag(R.id.key_view_holder_payload);
         final ViewHolderType attachedViewHolder = (ViewHolderType) view.getTag(R.id.key_view_holder);
-        return new Page<>(attachedItem, attachedViewHolder);
+        return new Page<>(itemFromView(view), attachedViewHolder);
     }
 
+    private ListItemType itemFromView(@NonNull View view) {
+        return (ListItemType) view.getTag(R.id.key_view_holder_payload);
+    }
+
+    private boolean recreatedSameItem(@NonNull View view) {
+        final ListItemType currentItem = getCurrentListItem();
+        final ListItemType attachedItem = itemFromView(view);
+//        return (null != currentItem && currentItem.equals(attachedItem));
+        return areListItemsTheSame(currentItem, attachedItem);
+    }
+
+    protected abstract boolean areListItemsTheSame(ListItemType firstItem, ListItemType secondItem);
 
 
     public interface PageChangeCallback<ListItemType, ViewHolderType> {
