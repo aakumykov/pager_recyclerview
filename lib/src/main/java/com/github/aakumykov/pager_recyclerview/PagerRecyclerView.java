@@ -165,4 +165,15 @@ public class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView
         }
     }
 
+
+    // Методы для диагностики
+    @Nullable
+    protected ListItemType getCurrentListItem() {
+        return (null != mCurrentPage) ? mCurrentPage.listItem : null;
+    }
+
+    @Nullable
+    protected ListItemType getNewListItem() {
+        return (null != mNewPage) ? mNewPage.listItem : null;
+    }
 }
