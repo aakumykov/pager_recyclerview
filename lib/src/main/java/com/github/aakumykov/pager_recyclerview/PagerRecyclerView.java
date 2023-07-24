@@ -9,8 +9,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.function.BiFunction;
-
 public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends RecyclerView.ViewHolder>
         extends RecyclerView
         implements RecyclerView.OnChildAttachStateChangeListener
@@ -19,8 +17,7 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
     @Nullable private Page<ListItemType, ViewHolderType> mCurrentPage;
     @Nullable private Page<ListItemType, ViewHolderType> mNewPage;
     @Nullable private PageChangeCallback<ListItemType, ViewHolderType> mPageChangeCallback;
-    @Nullable private BiFunction<ListItemType, ListItemType, Boolean> mItemsComparator;
-    private final boolean mFirstRun = true;
+    private boolean mFirstRun = true;
 
 
     public PagerRecyclerView(@NonNull Context context) {
@@ -48,60 +45,47 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
     }
 
 
-    public void setItemsComparator(@NonNull BiFunction<ListItemType, ListItemType, Boolean> comparator) {
-        mItemsComparator = comparator;
-    }
+    protected abstract boolean areListItemsTheSame(@Nullable ListItemType firstItem,
+                                                   @NonNull ListItemType secondItem);
+
 
 
     @Override
     public void onChildViewAttachedToWindow(@NonNull View view) {
 
-        if (recreatedSameItem(view))
+        /* Этот метод вызывается не только при листании, но и при смене ViewHolder-а у элемента
+        * (если используются разные VH для разных состояний элемента). Чтобы избежать
+        * ложных сообщений о прикреплении первой страницы, используется нижеследующая проверка. */
+        if (theSameItemIsRecreated(view))
             return;
 
         final Page<ListItemType, ViewHolderType> attachedPage = pageFromView(view);
-        final ListItemType attachedItem = itemFromView(view);
 
-        if (null == mCurrentPage) {
+        if (mFirstRun) {
+            mFirstRun = false;
             mCurrentPage = attachedPage;
             reportFirstPageAttached();
         }
         else {
             mNewPage = attachedPage;
-            //reportPageAttached(attachedPage); // Не очень-то и нужно.
         }
     }
 
     @Override
     public void onChildViewDetachedFromWindow(@NonNull View view) {
 
-        if (recreatedSameItem(view))
-            return;
-
         final Page<ListItemType, ViewHolderType> detachedPage = pageFromView(view);
-
-        /*if (currentPageIs(detachedPage)) {
-            mCurrentPage = mNewPage;
-            mNewPage = null;
-
-            reportPageDetached(detachedPage);
-            reportPageChanged(detachedPage, mCurrentPage);
-        }
-        else if (newPageIs(detachedPage)) {
-            reportPageDetached(mNewPage);
-            mNewPage = null;
-        }*/
 
         if (newPageIs(detachedPage)) {
             mNewPage = null;
         }
-        else if (currentPageIs(detachedPage)) {
+        else if (currentPageIs(detachedPage) && null != mNewPage) {
+            reportPageChanged(detachedPage, mNewPage);
             mCurrentPage = mNewPage;
             mNewPage = null;
-            reportPageChanged(detachedPage, mCurrentPage);
         }
         else {
-            Log.w(TAG, "onChildViewDetachedFromWindow(): неизвестный науке случай");
+            Log.w(TAG, "onChildViewDetachedFromWindow(): неизвестный науке случай!");
         }
     }
 
@@ -111,29 +95,10 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
             mPageChangeCallback.onFirstPageAttached(mCurrentPage);
     }
 
-    /*private void reportPageAttached(final Page<ListItemType,ViewHolderType> attachedPage) {
-        if (null != mPageChangeCallback) {
-            if (mFirstRun) {
-                mFirstRun = false;
-                mPageChangeCallback.onFirstPageAttached(attachedPage);
-            }
-            mPageChangeCallback.onNewPageAttached(attachedPage);
-        }
-    }*/
-
-    /*private void reportPageDetached(final Page<ListItemType,ViewHolderType> detachedPage) {
-        if (null != mPageChangeCallback)
-            mPageChangeCallback.onOldPageDetached(detachedPage);
-    }*/
-
     private void reportPageChanged(final Page<ListItemType,ViewHolderType> oldPage,
                                    final Page<ListItemType,ViewHolderType> newPage) {
         if (null != mPageChangeCallback)
             mPageChangeCallback.onPageChanged(oldPage, newPage);
-    }
-
-    private void subscribeToItself() {
-        addOnChildAttachStateChangeListener(this);
     }
 
     private boolean newPageIs(Page<ListItemType, ViewHolderType> detachedPage) {
@@ -141,11 +106,7 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
     }
 
     private boolean currentPageIs(Page<ListItemType, ViewHolderType> detachedPage) {
-        if (null == mItemsComparator)
-            throw new IllegalStateException("Item comparator function must be set with setItemsComparator() method.");
-
-        return (null != mCurrentPage &&
-                mItemsComparator.apply(mCurrentPage.listItem, detachedPage.listItem));
+        return null != mCurrentPage && areListItemsTheSame(mCurrentPage.listItem, detachedPage.listItem);
     }
 
 
@@ -158,25 +119,22 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
         return (ListItemType) view.getTag(R.id.key_view_holder_payload);
     }
 
-    private boolean recreatedSameItem(@NonNull View view) {
+    private boolean theSameItemIsRecreated(@NonNull View view) {
         final ListItemType currentItem = getCurrentListItem();
         final ListItemType itemFromView = itemFromView(view);
-//        return (null != currentItem && currentItem.equals(attachedItem));
         return areListItemsTheSame(currentItem, itemFromView);
     }
 
-    protected abstract boolean areListItemsTheSame(ListItemType firstItem, ListItemType secondItem);
+    private void subscribeToItself() {
+        addOnChildAttachStateChangeListener(this);
+    }
+
 
 
     public interface PageChangeCallback<ListItemType, ViewHolderType> {
-
         void onFirstPageAttached(final Page<ListItemType, ViewHolderType> page);
-
         void onPageChanged(final Page<ListItemType, ViewHolderType> oldPage,
                            final Page<ListItemType, ViewHolderType> newPage);
-
-//        default void onNewPageAttached(final Page<ListItemType, ViewHolderType> newPage) {}
-//        default void onOldPageDetached(final Page<ListItemType, ViewHolderType> oldPage) {}
     }
 
 
@@ -204,10 +162,5 @@ public abstract class PagerRecyclerView<ListItemType, ViewHolderType extends Rec
     @Nullable
     protected ListItemType getCurrentListItem() {
         return (null != mCurrentPage) ? mCurrentPage.listItem : null;
-    }
-
-    @Nullable
-    protected ListItemType getNewListItem() {
-        return (null != mNewPage) ? mNewPage.listItem : null;
     }
 }
